@@ -29,18 +29,34 @@ jobs:
           cp node_modules/html2canvas/dist/html2canvas.min.js www/lib/
           npx cap init "ویزیت دوو" com.daewoo.visit --web-dir www
           npx cap add android
-          cat > ext.js <<'EOF'
+          npm i sharp
+          cat > icons.js <<'EOF'
           const fs=require('fs');
+          const sharp=require('sharp');
           const h=fs.readFileSync('../index.html','utf8');
           const g=id=>{const m=h.match(new RegExp('id="'+id+'">([^<]*)<'));return m&&m[1].trim()?Buffer.from(m[1].trim(),'base64'):null};
-          const a=g('app-icon'),b=g('app-icon-fg'),c=g('app-icon-bg');
-          if(a&&b&&c){fs.mkdirSync('assets',{recursive:true});fs.writeFileSync('assets/icon-only.png',a);fs.writeFileSync('assets/icon-foreground.png',b);fs.writeFileSync('assets/icon-background.png',c);console.log('icons extracted')}
+          const a=g('app-icon'),b=g('app-icon-fg');
+          if(!a||!b){console.log('no icons in index.html');process.exit(0)}
+          const res='android/app/src/main/res/';
+          const D={mdpi:[48,108],hdpi:[72,162],xhdpi:[96,216],xxhdpi:[144,324],xxxhdpi:[192,432]};
+          (async()=>{
+            for(const k of Object.keys(D)){
+              const dir=res+'mipmap-'+k+'/';
+              fs.mkdirSync(dir,{recursive:true});
+              await sharp(a).resize(D[k][0],D[k][0]).png().toFile(dir+'ic_launcher.png');
+              await sharp(a).resize(D[k][0],D[k][0]).png().toFile(dir+'ic_launcher_round.png');
+              await sharp(b).resize(D[k][1],D[k][1]).png().toFile(dir+'ic_launcher_foreground.png');
+            }
+            fs.mkdirSync(res+'values',{recursive:true});
+            fs.writeFileSync(res+'values/ic_launcher_background.xml','<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#1E5BD8</color>\n</resources>\n');
+            const x='<?xml version="1.0" encoding="utf-8"?>\n<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n    <background android:drawable="@color/ic_launcher_background"/>\n    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>\n</adaptive-icon>\n';
+            fs.mkdirSync(res+'mipmap-anydpi-v26',{recursive:true});
+            fs.writeFileSync(res+'mipmap-anydpi-v26/ic_launcher.xml',x);
+            fs.writeFileSync(res+'mipmap-anydpi-v26/ic_launcher_round.xml',x);
+            console.log('icons done');
+          })().catch(e=>{console.error('icon step failed',e.message)});
           EOF
-          node ext.js
-          if [ -f assets/icon-only.png ]; then
-            npm i -D @capacitor/assets@3
-            npx capacitor-assets generate --android
-          fi
+          node icons.js
           npx cap sync android
           sed -i 's#<application#<uses-permission android:name="android.permission.CAMERA"/><uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/><uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/><application#' android/app/src/main/AndroidManifest.xml
           sed -i "s/versionCode 1/versionCode ${{ github.run_number }}/" android/app/build.gradle
