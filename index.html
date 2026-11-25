@@ -63,29 +63,31 @@ function parse(buf){
  var ex={},all=[];
  for(var i=5;i<rl.length;i++){var r=rl[i];if(!r[0]||!r[4])continue;var e=nm(r[4]);ex[e]=1;all.push({e:e,c:{code:String(r[0]),guar:r[5],dev:r[18],name:r[1],type:r[2],city:r[3],grade:r[6],visits:r[7],chq:r[8],chqPaid:r[9],aS:r[10],aD:r[11],aB:r[12],plan:r[14],buy:r[16],real:r[17],cat:{},orders:[],inst:[],aban:[]}})}
  return{wb:wb,ex:Object.keys(ex).sort(),all:all,m:[String((rl[0]||[])[9]||''),String((rl[1]||[])[9]||'')]}}
-function build(p,expert){
- var wb=p.wb,C={};p.all.forEach(function(x){if(x.e===expert)C[x.c.code]=x.c});
+function build(p,expert,all){
+ var wb=p.wb,C={};p.all.forEach(function(x){if(all||x.e===expert)C[x.c.code]=x.c});
  rows(wb,'DAEWOO(QTY)').forEach(function(r,i){if(i<5)return;var c=C[String(r[0])];if(c){c.credit=r[8];c.stock=r.slice(27,35);c.cat={buy:r.slice(9,17),inst:r.slice(18,26),plan:r.slice(36,44),sale:r.slice(45,53)}}});
  rows(wb,'3Month BUY').forEach(function(r,i){if(!i)return;var c=C[String(r[5])];if(c)c.orders.push([r[2],r[8],r[9],r[15],r[19]])});
  rows(wb,'Aban Sales').forEach(function(r,i){if(!i)return;var c=C[String(r[5])];if(c)c.aban.push([r[2],r[8],r[9],r[15],r[12],r[13]])});
  rows(wb,'3Month Installation').forEach(function(r,i){if(!i)return;var c=C[String(r[14])];if(c)c.inst.push([r[11],r[3],r[13],r[2]])});
  rows(wb,'CONTRACTS').forEach(function(r,i){if(i<2)return;var c=C[String(r[0])];if(c&&!c.mobile){c.owner=r[5];c.mobile=r[7];c.store=r[8];c.kind=r[4]}});
  var vp=rows(wb,'VISITPLAN1'),dates=(vp[1]||[]).slice(5,35),plan=[];
- vp.forEach(function(r,i){if(i<2||nm(r[2])!==expert)return;dates.forEach(function(d,k){if(r[5+k]==1)plan.push([String(d).trim(),String(r[0])])})});
+ vp.forEach(function(r,i){if(i<2||(!all&&nm(r[2])!==expert))return;dates.forEach(function(d,k){if(r[5+k]==1)plan.push([String(d).trim(),String(r[0])])})});
  plan.sort();
  var chq=[];rows(wb,'CHEQUE').forEach(function(r,i){if(i<2)return;var cd=String(r[0]);if(C[cd])chq.push([cd,String(r[2]).trim(),Number(r[3])||0,String(r[4]),r[5],r[12],r[8]])});
  chq.sort(function(a,b){return a[1]<b[1]?-1:a[1]>b[1]?1:0});
- var rl={};rows(wb,'Realization').forEach(function(r,i){if(i>=3&&nm(r[1])===expert)rl={planPct:r[2],planR:r[3],sale:r[7],real:r[8],devPlan:r[10],devReal:r[11],devPct:r[12]}});
- return{expert:expert,ts:today(),cust:C,plan:plan,chq:chq,rl:rl,m1:p.m[0],m2:p.m[1]}}
+ var rl={};rows(wb,'Realization').forEach(function(r,i){if(!all&&i>=3&&nm(r[1])===expert)rl={planPct:r[2],planR:r[3],sale:r[7],real:r[8],devPlan:r[10],devReal:r[11],devPct:r[12]}});
+ return{expert:expert,ts:today(),cust:C,plan:plan,chq:chq,rl:rl,m1:p.m[0],m2:p.m[1],all:!!all}}
 var PEND=null;
 function loadFile(f){
  if(!f)return;msg('در حال خواندن فایل…');
  var fr=new FileReader();fr.onload=function(){setTimeout(function(){try{
   var p=parse(fr.result);
-  if(E&&p.ex.indexOf(E)>-1){finish(p,E)}else{PEND=p;pick(p.ex)}
+  if(D&&D.all&&E){finish(p,E,true)}else if(E&&p.ex.indexOf(E)>-1){finish(p,E)}else{PEND=p;pick(p.ex)}
  }catch(e){msg('خطا در خواندن فایل: '+esc(e.message))}},30)};fr.readAsArrayBuffer(f)}
-function finish(p,e){E=e;st('E',E);D=build(p,e);PEND=null;st('D',D);tab='cust';draw()}
-function pick(ex){$('app').innerHTML='<div class="c"><h2>نام کارشناس را انتخاب کنید</h2><select id="ex">'+ex.map(function(e){return'<option>'+esc(e)+'</option>'}).join('')+'</select><button class="b p" onclick="finish(PEND,$(\'ex\').value)">تأیید</button></div>'}
+function finish(p,e,all){E=e;st('E',E);D=build(p,e,all);PEND=null;st('D',D);tab='cust';draw()}
+var ADM=['امیرحسین مبارکی','لطیف احمدپور'];
+function fin2(){var v=$('ex').value;if(v.indexOf('ALL|')===0)finish(PEND,v.slice(4),true);else finish(PEND,v)}
+function pick(ex){$('app').innerHTML='<div class="c"><h2>نام کارشناس را انتخاب کنید</h2><select id="ex">'+ex.map(function(e){return'<option>'+esc(e)+'</option>'}).join('')+ADM.map(function(e){return'<option value="ALL|'+esc(e)+'">⭐ '+esc(e)+' (همه مشتریان و گزارش‌ها)</option>'}).join('')+'</select><button class="b p" onclick="fin2()">تأیید</button></div>'}
 function msg(t){$('app').innerHTML='<div class="c">'+t+'</div>'}
 function $(i){return document.getElementById(i)}
 function imp(){return'<div class="c"><h2>بارگذاری فایل اکسل</h2><p class="mu">همان فایل کامل (مثل 08_Aban_RdMap) را انتخاب کنید. فقط اطلاعات کارشناس شما نگه داشته می‌شود. هر هفته می‌توانید فایل جدید را دوباره بارگذاری کنید؛ ویزیت‌ها و فروشگاه‌های ثبت‌شده پاک نمی‌شوند.</p><input type="file" onchange="loadFile(this.files[0])"></div>'}
@@ -150,7 +152,7 @@ function vPerf(){
  var cs=Object.keys(D.cust).map(function(k){return D.cust[k]}),r=D.rl||{},P0=N(r.planR)||sm(cs.map(function(c){return c.plan})),S0=r.sale!==undefined&&r.sale!==''?N(r.sale):sm(cs.map(function(c){return c.buy})),p0=pc(S0,P0),ex=expd();
  var cat=CATS.map(function(n,i){var a=0,b=0;cs.forEach(function(c){a+=N(((c.cat||{}).plan||[])[i]);b+=N(((c.cat||{}).sale||[])[i])});return[n,a,b]});
  var lst=cs.map(function(c){return[c,Math.max(0,N(c.plan)-N(c.buy))]}).sort(function(a,b){return b[1]-a[1]}).slice(0,20),nb=cs.filter(function(c){return!N(c.buy)&&N(c.plan)>0}).length;
- var h='<h2>عملکرد من - '+esc(D.expert)+'</h2><p class="mu">دوره: '+esc(D.m1)+' تا '+esc(D.m2)+' | بروزرسانی فایل: '+esc(D.ts)+'</p>'
+ var h='<h2>عملکرد '+(D.all?'همه مشتریان - ':'من - ')+esc(D.expert)+'</h2><p class="mu">دوره: '+esc(D.m1)+' تا '+esc(D.m2)+' | بروزرسانی فایل: '+esc(D.ts)+'</p>'
  +'<div class="c" style="border-color:var(--ac)"><div class="li">پلن ریالی: <b>'+mi(P0)+'</b> م | فروش: <b>'+mi(S0)+'</b> م</div><div class="li">تحقق پلن: <b>'+fa(p0)+'٪</b>'+bar(p0)+(ex!==null?'<span class="mu">روند مورد انتظار تا امروز: '+fa(ex)+'٪</span>':'')+'</div><div class="li">مانده تا پلن: <b class="er">'+mi(Math.max(0,P0-S0))+'</b> م</div>'
  +(r.devPlan?'<div class="li">توسعه شبکه: <b>'+fa(N(r.devReal))+'</b> از '+fa(N(r.devPlan))+' فروشگاه</div>':'')+'<div class="li">مشتریان بدون خرید این ماه (دارای پلن): <b>'+fa(nb)+'</b></div></div>'
  +'<div class="c"><h3 style="margin-top:0">پلن و فروش به تفکیک گروه (تعدادی)</h3><div class="w"><table><tr><th>گروه</th><th>پلن</th><th>فروش</th><th>مانده</th><th>٪</th></tr>'+cat.map(function(x){return'<tr><td>'+x[0]+'</td><td>'+fa(x[1])+'</td><td>'+fa(x[2])+'</td><td>'+fa(Math.max(0,x[1]-x[2]))+'</td><td>'+fa(pc(x[2],x[1]))+'</td></tr>'}).join('')+'</table></div></div>'
