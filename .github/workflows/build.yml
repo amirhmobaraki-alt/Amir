@@ -33,13 +33,13 @@ jobs:
           const fs=require('fs');
           const h=fs.readFileSync('../index.html','utf8');
           const g=id=>{const m=h.match(new RegExp('id="'+id+'">([^<]*)<'));return m&&m[1].trim()?Buffer.from(m[1].trim(),'base64'):null};
-          const a=g('app-icon'),b=g('app-icon-fg');
-          if(a&&b){fs.mkdirSync('assets',{recursive:true});fs.writeFileSync('assets/icon-only.png',a);fs.writeFileSync('assets/icon-foreground.png',b);console.log('icons extracted')}
+          const a=g('app-icon'),b=g('app-icon-fg'),c=g('app-icon-bg');
+          if(a&&b&&c){fs.mkdirSync('assets',{recursive:true});fs.writeFileSync('assets/icon-only.png',a);fs.writeFileSync('assets/icon-foreground.png',b);fs.writeFileSync('assets/icon-background.png',c);console.log('icons extracted')}
           EOF
           node ext.js
           if [ -f assets/icon-only.png ]; then
             npm i -D @capacitor/assets@3
-            npx capacitor-assets generate --android --iconBackgroundColor '#1e5bd8' --iconBackgroundColorDark '#0f2a5c'
+            npx capacitor-assets generate --android
           fi
           npx cap sync android
           sed -i 's#<application#<uses-permission android:name="android.permission.CAMERA"/><uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/><uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/><application#' android/app/src/main/AndroidManifest.xml
