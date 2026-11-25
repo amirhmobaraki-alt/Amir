@@ -29,8 +29,26 @@ jobs:
           cp node_modules/html2canvas/dist/html2canvas.min.js www/lib/
           npx cap init "ویزیت دوو" com.daewoo.visit --web-dir www
           npx cap add android
+          cat > ext.js <<'EOF'
+          const fs=require('fs');
+          const h=fs.readFileSync('../index.html','utf8');
+          const g=id=>{const m=h.match(new RegExp('id="'+id+'">([^<]*)<'));return m&&m[1].trim()?Buffer.from(m[1].trim(),'base64'):null};
+          const a=g('app-icon'),b=g('app-icon-fg');
+          if(a&&b){fs.mkdirSync('assets',{recursive:true});fs.writeFileSync('assets/icon-only.png',a);fs.writeFileSync('assets/icon-foreground.png',b);console.log('icons extracted')}
+          EOF
+          node ext.js
+          if [ -f assets/icon-only.png ]; then
+            npm i -D @capacitor/assets@3
+            npx capacitor-assets generate --android --iconBackgroundColor '#1e5bd8' --iconBackgroundColorDark '#0f2a5c'
+          fi
           npx cap sync android
           sed -i 's#<application#<uses-permission android:name="android.permission.CAMERA"/><uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/><uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/><application#' android/app/src/main/AndroidManifest.xml
+          sed -i "s/versionCode 1/versionCode ${{ github.run_number }}/" android/app/build.gradle
+          sed -i 's/versionName "1.0"/versionName "1.${{ github.run_number }}"/' android/app/build.gradle
+      - name: Use fixed signing key
+        run: |
+          mkdir -p ~/.android
+          if [ -f debug.keystore ]; then cp debug.keystore ~/.android/debug.keystore; fi
       - name: Build debug APK
         working-directory: app/android
         run: ./gradlew assembleDebug
