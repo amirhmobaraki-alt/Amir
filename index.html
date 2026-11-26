@@ -84,8 +84,9 @@ function loadFile(f){
   var p=parse(fr.result);
   if(D&&D.all&&E){finish(p,E,true)}else if(E&&p.ex.indexOf(E)>-1){finish(p,E)}else{PEND=p;pick(p.ex)}
  }catch(e){msg('خطا در خواندن فایل: '+esc(e.message))}},30)};fr.readAsArrayBuffer(f)}
-function finish(p,e,all){E=e;st('E',E);D=build(p,e,all);PEND=null;st('D',D);tab='cust';draw()}
+function finish(p,e,all){E=e;st('E',E);D=build(p,e,all||adm(e));PEND=null;st('D',D);tab='cust';draw()}
 var ADM=['امیرحسین مبارکی','لطیف احمدپور'];
+function adm(e){var k=function(x){return nm(x).replace(/ /g,'')};return ADM.some(function(a){return k(a)===k(e)})}
 function fin2(){var v=$('ex').value;if(v.indexOf('ALL|')===0)finish(PEND,v.slice(4),true);else finish(PEND,v)}
 function pick(ex){$('app').innerHTML='<div class="c"><h2>نام کارشناس را انتخاب کنید</h2><select id="ex">'+ex.map(function(e){return'<option>'+esc(e)+'</option>'}).join('')+ADM.map(function(e){return'<option value="ALL|'+esc(e)+'">⭐ '+esc(e)+' (همه مشتریان و گزارش‌ها)</option>'}).join('')+'</select><button class="b p" onclick="fin2()">تأیید</button></div>'}
 function msg(t){$('app').innerHTML='<div class="c">'+t+'</div>'}
@@ -228,7 +229,10 @@ function exC(){var c=D&&D.cust[cur];if(!c)return;var wb=XLSX.utils.book_new();
  addSh(wb,'سفارش‌های ماه',c.aban.map(function(o){return{'تاریخ':o[0],'کالا':o[1],'تعداد':o[2],'مبلغ (ریال)':o[3],'بارگیری':o[4],'حواله':o[5]}}));
  addSh(wb,'گزارش نصب',c.inst.map(function(o){return{'تاریخ نصب':o[0],'کالا':o[1],'شهر نصب':o[2],'برند':o[3]}}));
  addSh(wb,'چک‌ها',(D.chq||[]).filter(function(x){return x[0]===c.code}).map(function(x){return{'سررسید':x[1],'مبلغ (ریال)':x[2],'شماره چک':x[3],'بانک':x[4],'نوع':x[5],'بابت':x[6]}}));saveWb(wb,fnm('سوابق_'+c.code))}
-function vImp(){$('app').innerHTML='<h2>ورودی اکسل</h2>'+imp()+'<div class="c"><div class="li">'+(D?'فایل بارگذاری‌شده برای: <b>'+esc(D.expert)+'</b> | تاریخ: '+esc(D.ts)+' | مشتری: '+fa(Object.keys(D.cust).length):'هنوز فایلی بارگذاری نشده. ثبت ویزیت و فروشگاه بدون فایل هم کار می‌کند.')+'</div></div>'}
+function enCard(){return'<div class="c"><h3 style="margin-top:0">نام کارشناس</h3><input id="en" value="'+esc(E)+'" placeholder="نام و نام خانوادگی"><div class="row"><button class="b p" onclick="svE()">ذخیره نام</button><button class="b" onclick="chgE()">تغییر کارشناس (انتخاب از فایل)</button></div><p class="mu">«ذخیره نام» فقط نامی را که روی ویزیت‌ها و گزارش‌ها می‌آید عوض می‌کند. برای دیدن مشتری‌های کارشناس دیگر، «تغییر کارشناس» را بزنید و فایل اکسل را دوباره بارگذاری کنید.</p></div>'}
+function svE(){var v=$('en').value.trim();if(!v){alert('نام را وارد کنید');return}E=v;st('E',E);if(D){D.expert=v;st('D',D)}alert(D&&adm(v)!==!!D.all?'نام ذخیره شد. برای اعمال دسترسی این نام، فایل اکسل را دوباره بارگذاری کنید.':'نام ذخیره شد');draw()}
+function chgE(){E='';st('E','');alert('حالا فایل اکسل را دوباره بارگذاری کنید و کارشناس را انتخاب کنید');draw()}
+function vImp(){$('app').innerHTML='<h2>ورودی اکسل</h2>'+enCard()+imp()+'<div class="c"><div class="li">'+(D?'فایل بارگذاری‌شده برای: <b>'+esc(D.expert)+'</b> | تاریخ: '+esc(D.ts)+' | مشتری: '+fa(Object.keys(D.cust).length):'هنوز فایلی بارگذاری نشده. ثبت ویزیت و فروشگاه بدون فایل هم کار می‌کند.')+'</div></div>'}
 function vRep(){
  var v=V.filter(function(x){return inR(x.date)}),a=v.reduce(function(s,x){return s+x.amount},0),n=v.filter(function(x){return x.amount}).length;
  var h='<h2>گزارش‌ها</h2><div class="c"><label>از تاریخ</label><input id="rf" value="'+esc(RF)+'" placeholder="1405/09/01"><label>تا تاریخ</label><input id="rt" value="'+esc(RT)+'" placeholder="1405/09/30"><button class="b" onclick="RF=dg($(\'rf\').value.trim());RT=dg($(\'rt\').value.trim());vRep()">اعمال فیلتر تاریخ</button></div>'
